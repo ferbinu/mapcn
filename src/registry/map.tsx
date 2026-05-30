@@ -1202,8 +1202,9 @@ type MapArcProps<T extends MapArcDatum = MapArcDatum> = {
   /**
    * How far each arc bows away from a straight line. `0` renders straight
    * lines; higher values bend further. Negative values bend to the opposite
-   * side. Arcs are computed as a quadratic Bézier in lng/lat space and do not
-   * account for the antimeridian. (default: 0.2)
+   * side. Arcs are computed as a quadratic Bézier in lng/lat space; the
+   * destination longitude is unwrapped relative to the origin so that arcs
+   * cross the antimeridian via the shorter great-circle direction. (default: 0.2)
    */
   curvature?: number;
   /** Number of samples used to render each curve. Higher = smoother. (default: 64) */
@@ -1282,12 +1283,20 @@ function buildArcCoordinates(
   samples: number,
 ): [number, number][] {
   const [x0, y0] = from;
-  const [x2, y2] = to;
+  const [xTo, y2] = to;
+  // Unwrap the destination longitude so |dx| <= 180. This makes arcs that
+  // straddle the antimeridian (e.g. Tokyo -> San Francisco) bow the short way
+  // across the Pacific instead of the long way around the globe. Resulting
+  // longitudes may fall outside [-180, 180]; MapLibre renders them correctly
+  // on the globe projection, and on mercator when world copies are enabled.
+  const rawDx = xTo - x0;
+  const x2 =
+    rawDx > 180 ? xTo - 360 : rawDx < -180 ? xTo + 360 : xTo;
   const dx = x2 - x0;
   const dy = y2 - y0;
   const distance = Math.hypot(dx, dy);
 
-  if (distance === 0 || curvature === 0) return [from, to];
+  if (distance === 0 || curvature === 0) return [from, [x2, y2]];
 
   const mx = (x0 + x2) / 2;
   const my = (y0 + y2) / 2;

@@ -20,11 +20,23 @@ const destinations = [
   { name: "Sydney", lng: 151.2093, lat: -33.8688 },
 ];
 
-const arcs = destinations.map((dest) => ({
-  id: dest.name,
-  from: [hub.lng, hub.lat] as [number, number],
-  to: [dest.lng, dest.lat] as [number, number],
-}));
+const sanFrancisco = { name: "San Francisco", lng: -122.4194, lat: 37.7749 };
+const tokyo = destinations.find((d) => d.name === "Tokyo")!;
+
+const arcs = [
+  ...destinations.map((dest) => ({
+    id: dest.name,
+    from: [hub.lng, hub.lat] as [number, number],
+    to: [dest.lng, dest.lat] as [number, number],
+  })),
+  // Transpacific arc straddling the antimeridian — should bow across the
+  // Pacific, not the long way around the globe.
+  {
+    id: "tokyo-sf",
+    from: [tokyo.lng, tokyo.lat] as [number, number],
+    to: [sanFrancisco.lng, sanFrancisco.lat] as [number, number],
+  },
+];
 
 export function ArcExample() {
   return (
@@ -51,7 +63,7 @@ export function ArcExample() {
           </MarkerContent>
         </MapMarker>
 
-        {destinations.map((dest) => (
+        {[...destinations, sanFrancisco].map((dest) => (
           <MapMarker key={dest.name} longitude={dest.lng} latitude={dest.lat}>
             <MarkerContent>
               <div
